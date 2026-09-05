@@ -20,12 +20,12 @@ class AuthRepository(private val auth: FirebaseAuth, private val db: FirebaseFir
     val session: StateFlow<SessionState> = _session
 
     init {
-        auth.addAuthStateListener { user ->
+        auth.addAuthStateListener {
+            val user = auth.currentUser
             if (user == null) {
                 _session.value = SessionState.SignedOut
             } else {
-                val emailVal = user.email.orEmpty()
-                loadProfile(user.uid, emailVal)
+                loadProfile(user.uid, user.email.orEmpty())
             }
         }
     }
