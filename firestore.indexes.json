@@ -1,0 +1,9 @@
+{
+  "indexes": [
+    {"collectionGroup":"transactions","queryScope":"COLLECTION","fields":[{"fieldPath":"archived","order":"ASCENDING"},{"fieldPath":"transactionDate","order":"DESCENDING"}]},
+    {"collectionGroup":"transactions","queryScope":"COLLECTION","fields":[{"fieldPath":"archived","order":"ASCENDING"},{"fieldPath":"type","order":"ASCENDING"},{"fieldPath":"transactionDate","order":"DESCENDING"}]},
+    {"collectionGroup":"members","queryScope":"COLLECTION","fields":[{"fieldPath":"status","order":"ASCENDING"},{"fieldPath":"normalizedName","order":"ASCENDING"}]},
+    {"collectionGroup":"duesPayments","queryScope":"COLLECTION","fields":[{"fieldPath":"periodId","order":"ASCENDING"},{"fieldPath":"memberId","order":"ASCENDING"}]}
+  ],
+  "fieldOverrides": []
+}
