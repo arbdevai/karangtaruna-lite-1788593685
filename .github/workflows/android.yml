@@ -40,6 +40,37 @@ jobs:
           }
           EOF
           fi
+      - name: Restore release keystore from secrets if configured
+        if: ${{ hashFiles('app/google-services.json') != '' && vars.ANDROID_KEYSTORE_BASE64 != '' }}
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          mkdir -p $HOME/keystore
+          echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > $HOME/keystore/release.keystore
+          cat << EOF > keystore.properties
+          storeFile=$HOME/keystore/release.keystore
+          storePassword=$ANDROID_KEYSTORE_PASSWORD
+          keyAlias=$ANDROID_KEY_ALIAS
+          keyPassword=$ANDROID_KEY_PASSWORD
+          EOF
+      - name: Generate CI keystore when release signing not configured
+        run: |
+          if [ ! -f keystore.properties ]; then
+            echo "No release signing secrets configured. Generating ephemeral CI keystore to keep APK signatures consistent for this workflow."
+            keystore="$HOME/keystore/ci-stable.keystore"
+            mkdir -p $HOME/keystore
+            keytool -genkeypair -keystore "$keystore" -storetype PKCS12 -alias ci -keyalg RSA -keysize 2048 -validity 10000 \
+              -dname "CN=KarangTaruna CI, OU=CI, O=CI" -storepass ci-ci-ci-ci -keypass ci-ci-ci-ci
+            cat << EOF > keystore.properties
+          storeFile=$keystore
+          storePassword=ci-ci-ci-ci
+          keyAlias=ci
+          keyPassword=ci-ci-ci-ci
+          EOF
+          fi
       - name: Unit tests
         run: ./gradlew --no-daemon testDebugUnitTest
       - name: Android lint
@@ -48,6 +79,9 @@ jobs:
         run: ./gradlew --no-daemon assembleDebug
       - name: Assemble release candidate
         run: ./gradlew --no-daemon assembleRelease
+      - name: Verify APK signatures
+        run: |
+          find app/build/outputs/apk -type f -name "*.apk" -print -exec keytool -printcert -jarfile {} \; 2>&1 | head -80 || true
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
         with:
