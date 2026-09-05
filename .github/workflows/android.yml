@@ -32,7 +32,10 @@ jobs:
             cat << 'EOF' > app/google-services.json
           {
             "project_info": { "project_number": "123456789", "project_id": "demo-ci", "storage_bucket": "demo-ci.appspot.com" },
-            "client": [{ "client_info": { "mobilesdk_app_id": "1:123456789:android:abcdef0123456789", "android_client_info": { "package_name": "id.or.karangtaruna" } }, "oauth_client": [], "api_key": [{ "current_key": "ci-build-only-key" }], "services": {} }],
+            "client": [
+              { "client_info": { "mobilesdk_app_id": "1:123456789:android:abcdef0123456789", "android_client_info": { "package_name": "id.or.karangtaruna" } }, "oauth_client": [], "api_key": [{ "current_key": "ci-build-only-key" }], "services": {} },
+              { "client_info": { "mobilesdk_app_id": "1:123456789:android:abcdef0123456780", "android_client_info": { "package_name": "id.or.karangtaruna.debug" } }, "oauth_client": [], "api_key": [{ "current_key": "ci-build-only-key" }], "services": {} }
+            ],
             "configuration_version": "1"
           }
           EOF
