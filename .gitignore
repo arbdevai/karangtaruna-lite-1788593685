@@ -2,7 +2,7 @@
 build
 local.properties
 keystore.properties
-google-services.json
+# Firebase client config is supplied by the deployment environment.
 app/build
 app/*.jks
 app/*.keystore

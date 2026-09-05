@@ -26,6 +26,17 @@ jobs:
         uses: gradle/actions/wrapper-validation@v4
       - name: Grant execute permission
         run: chmod +x gradlew
+      - name: Setup CI Firebase stub if needed
+        run: |
+          if [ ! -f app/google-services.json ]; then
+            cat << 'EOF' > app/google-services.json
+          {
+            "project_info": { "project_number": "123456789", "project_id": "demo-ci", "storage_bucket": "demo-ci.appspot.com" },
+            "client": [{ "client_info": { "mobilesdk_app_id": "1:123456789:android:abcdef0123456789", "android_client_info": { "package_name": "id.or.karangtaruna" } }, "oauth_client": [], "api_key": [{ "current_key": "dummy-ci-key" }], "services": {} }],
+            "configuration_version": "1"
+          }
+          EOF
+          fi
       - name: Unit tests
         run: ./gradlew --no-daemon testDebugUnitTest
       - name: Android lint
