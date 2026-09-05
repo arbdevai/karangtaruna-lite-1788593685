@@ -29,4 +29,10 @@ import id.or.karangtaruna.core.util.Formatters
 @Composable fun SectionTitle(title: String, action: String? = null, onAction: (() -> Unit)? = null) { Row(Modifier.fillMaxWidth().padding(top = 23.dp, bottom = 9.dp), verticalAlignment = Alignment.CenterVertically) { Text(title, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f)); if (action != null && onAction != null) TextButton(onClick = onAction) { Text(action) } } }
 @Composable fun EmptyState(text: String) { Text(text, Modifier.fillMaxWidth().padding(vertical = 25.dp), color = MaterialTheme.colorScheme.onSurfaceVariant) }
 @Composable fun ErrorState(text: String, retry: () -> Unit) { Row(Modifier.fillMaxWidth().padding(vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) { Text(text, Modifier.weight(1f), color = MaterialTheme.colorScheme.error); TextButton(retry) { Text("Coba lagi") } } }
-@Composable fun StatLine(label: String, value: String, valueColor: Color = MaterialTheme.colorScheme.onSurface) { Row(Modifier.fillMaxWidth().padding(vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) { Text(label, Modifier.weight(1f), color = MaterialTheme.colorScheme.onSurfaceVariant); Text(value, color = valueColor, fontWeight = FontWeight.SemiBold) } HorizontalDivider(color = MaterialTheme.colorScheme.outline) }
+@Composable fun StatLine(label: String, value: String, valueColor: Color = MaterialTheme.colorScheme.onSurface) {
+    Row(Modifier.fillMaxWidth().padding(vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+        Text(label, Modifier.weight(1f), color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(value, color = valueColor, fontWeight = FontWeight.SemiBold)
+    }
+    HorizontalDivider(color = MaterialTheme.colorScheme.outline)
+}

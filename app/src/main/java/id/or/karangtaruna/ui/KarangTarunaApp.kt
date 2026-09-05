@@ -22,11 +22,14 @@ import id.or.karangtaruna.ui.theme.KarangTarunaTheme
     KarangTarunaTheme {
         val authRepo = remember { AuthRepository(FirebaseAuth.getInstance(), FirebaseFirestore.getInstance()) }
         val authVm: AuthViewModel = viewModel(factory = factory { AuthViewModel(authRepo) })
-        val session by authVm.session.collectAsStateWithLifecycle()
-        when (session) {
+        val sessionValue = authVm.session.collectAsStateWithLifecycle().value
+        when (sessionValue) {
             SessionState.Loading -> LoadingScreen()
             SessionState.SignedOut -> AuthScreen(authVm)
-            is SessionState.SignedIn -> MainShell(session.profile, authVm)
+            is SessionState.SignedIn -> {
+                val profile: UserProfile = sessionValue.profile
+                MainShell(profile, authVm)
+            }
         }
     }
 }
