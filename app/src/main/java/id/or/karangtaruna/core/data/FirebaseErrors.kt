@@ -29,9 +29,10 @@ fun Throwable.toUserMessage(operation: String = "auth"): String {
         else -> when (this) {
             is FirebaseNetworkException -> "Tidak dapat terhubung ke server. Periksa koneksi internet."
             is FirebaseFirestoreException -> when (this.code) {
-                FirebaseFirestoreException.Code.PERMISSION_DENIED -> "Akun berhasil masuk, tetapi profil belum diizinkan."
+                FirebaseFirestoreException.Code.PERMISSION_DENIED -> "Anda tidak memiliki izin untuk membaca atau mengubah data ini."
                 FirebaseFirestoreException.Code.UNAVAILABLE -> "Layanan sedang sibuk. Coba sesaat lagi."
-                else -> "Profil belum tersimpan. Coba lagi."
+                FirebaseFirestoreException.Code.NOT_FOUND -> "Data tidak ditemukan."
+                else -> "Data gagal dimuat. Coba lagi."
             }
             else -> "Terjadi kesalahan saat $operation. Coba lagi."
         }

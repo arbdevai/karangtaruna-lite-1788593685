@@ -27,7 +27,6 @@ sealed interface SessionState {
     data object Loading : SessionState
     data object SignedOut : SessionState
     data class SignedIn(val profile: UserProfile) : SessionState
-    data class ProfileUnavailable(val message: String) : SessionState
 }
 
 class AuthRepository(private val auth: FirebaseAuth, private val db: FirebaseFirestore) {
@@ -46,55 +45,55 @@ class AuthRepository(private val auth: FirebaseAuth, private val db: FirebaseFir
             } else {
                 _session.value = SessionState.Loading
                 scope.launch {
-                    when (val result = provisionProfile(user)) {
-                        is AppResult.Success -> attachProfileListener(user)
-                        is AppResult.Failure -> _session.value = SessionState.ProfileUnavailable(result.message)
-                    }
+                    provisionProfileOrAttach(user)
                 }
             }
         }
     }
 
-    suspend fun retryProfile(): AppResult<Unit> {
-        val user = auth.currentUser ?: return AppResult.Failure("Sesi telah berakhir. Silakan masuk lagi.")
-        return when (val result = provisionProfile(user)) {
-            is AppResult.Success -> { attachProfileListener(user); result }
-            is AppResult.Failure -> result
+    private suspend fun provisionProfileOrAttach(user: FirebaseUser) {
+        // Ensure user document exists without blocking on transient read errors
+        val ref = db.collection("users").document(user.uid)
+        val existing = try { ref.get().await() } catch (e: Exception) { Log.w(TAG, "Profile read failed: ${e.message}"); null }
+        if (existing != null && !existing.exists()) {
+            runCatching {
+                ref.set(
+                    mapOf(
+                        "displayName" to (user.displayName?.ifBlank { null } ?: user.email?.substringBefore('@') ?: "Warga"),
+                        "email" to (user.email?.lowercase() ?: ""),
+                        "role" to Role.VIEWER.name,
+                        "active" to true,
+                        "createdAt" to Timestamp.now(),
+                        "updatedAt" to Timestamp.now(),
+                    ),
+                    SetOptions.merge(),
+                ).await()
+            }.onFailure { error -> Log.w(TAG, "Profile bootstrap write failed: ${error.message}") }
         }
+        attachProfileListener(user)
     }
 
-    private suspend fun provisionProfile(user: FirebaseUser): AppResult<Unit> = runCatching {
-        val ref = db.collection("users").document(user.uid)
-        val snapshot = ref.get().await()
-        val role = snapshot.getString("role") ?: Role.VIEWER.name
-        val active = snapshot.getBoolean("active") ?: true
-        ref.set(
-            mapOf(
-                "displayName" to (snapshot.getString("displayName")?.ifBlank { null } ?: user.displayName?.ifBlank { null } ?: user.email?.substringBefore('@') ?: "Warga"),
-                "email" to (snapshot.getString("email")?.ifBlank { null } ?: user.email?.lowercase() ?: ""),
-                "role" to role,
-                "active" to active,
-                "createdAt" to (snapshot.getTimestamp("createdAt") ?: Timestamp.now()),
-                "updatedAt" to Timestamp.now(),
-            ),
-            SetOptions.merge(),
-        ).await()
-        Unit
-    }.fold({ AppResult.Success(it) }, { error ->
-        Log.e(TAG, "Profile provision failed: ${error.message}")
-        AppResult.Failure(error.toUserMessage("menyimpan profil"))
-    })
+    fun retryProfile() {
+        val user = auth.currentUser ?: return
+        _session.value = SessionState.Loading
+        scope.launch { provisionProfileOrAttach(user) }
+    }
 
     private fun attachProfileListener(user: FirebaseUser) {
         profileListener?.remove()
         profileListener = db.collection("users").document(user.uid).addSnapshotListener { snapshot, error ->
             if (error != null) {
                 Log.w(TAG, "Profile snapshot failed: ${error.message}")
-                _session.value = SessionState.ProfileUnavailable(error.toUserMessage("memuat profil"))
+                // Recover with explicit defaults so no UI shows empty role/status
+                _session.value = SessionState.SignedIn(
+                    UserProfile(uid = user.uid, displayName = user.displayName ?: user.email?.substringBefore('@').orEmpty(), email = user.email.orEmpty(), role = Role.VIEWER, active = true),
+                )
             } else if (snapshot == null || !snapshot.exists()) {
-                _session.value = SessionState.ProfileUnavailable("Profil belum tersimpan. Tekan Coba lagi.")
+                _session.value = SessionState.SignedIn(
+                    UserProfile(uid = user.uid, displayName = user.displayName ?: user.email?.substringBefore('@').orEmpty(), email = user.email.orEmpty(), role = Role.VIEWER, active = true),
+                )
             } else {
-                _session.value = SessionState.SignedIn(snapshot.toUserProfile(user))
+                _session.value = SessionState.SignedIn(snapshot.toSafeProfile(user))
             }
         }
     }
@@ -106,14 +105,12 @@ class AuthRepository(private val auth: FirebaseAuth, private val db: FirebaseFir
 
     suspend fun register(name: String, email: String, password: String): AppResult<Unit> = runCatching {
         val user = auth.createUserWithEmailAndPassword(email.trim(), password).await().user ?: error("Akun tidak tersedia")
-        db.collection("users").document(user.uid).set(
-            mapOf(
-                "displayName" to name.trim(), "email" to email.trim().lowercase(),
-                "role" to Role.VIEWER.name, "active" to true,
-                "createdAt" to Timestamp.now(), "updatedAt" to Timestamp.now(),
-            ),
-            SetOptions.merge(),
-        ).await()
+        runCatching {
+            db.collection("users").document(user.uid).set(
+                mapOf("displayName" to name.trim(), "email" to email.trim().lowercase(), "role" to Role.VIEWER.name, "active" to true, "createdAt" to Timestamp.now(), "updatedAt" to Timestamp.now()),
+                SetOptions.merge(),
+            ).await()
+        }
         Unit
     }.fold({ AppResult.Success(it) }, { AppResult.Failure(it.toUserMessage("mendaftar")) })
 
@@ -124,8 +121,8 @@ class AuthRepository(private val auth: FirebaseAuth, private val db: FirebaseFir
 
     suspend fun signInWithGoogle(activity: Activity): AppResult<Unit> = try {
         val provider = OAuthProvider.newBuilder("google.com").build()
-        val user = auth.startActivityForSignInWithProvider(activity, provider).await().user ?: error("Akun Google tidak tersedia")
-        provisionProfile(user)
+        auth.startActivityForSignInWithProvider(activity, provider).await()
+        Unit
     } catch (e: Throwable) {
         AppResult.Failure(e.toUserMessage("login Google"))
     }
@@ -134,10 +131,10 @@ class AuthRepository(private val auth: FirebaseAuth, private val db: FirebaseFir
 
     private fun roleOf(value: String?): Role = runCatching { Role.valueOf(value.orEmpty()) }.getOrDefault(Role.VIEWER)
 
-    private fun com.google.firebase.firestore.DocumentSnapshot.toUserProfile(user: FirebaseUser) = UserProfile(
+    private fun com.google.firebase.firestore.DocumentSnapshot.toSafeProfile(user: FirebaseUser) = UserProfile(
         uid = id,
-        displayName = getString("displayName")?.ifBlank { null } ?: user.displayName ?: user.email?.substringBefore('@').orEmpty(),
-        email = getString("email") ?: user.email.orEmpty(),
+        displayName = getString("displayName")?.ifBlank { null } ?: user.displayName?.ifBlank { null } ?: user.email?.substringBefore('@').orEmpty().ifBlank { "Warga" },
+        email = getString("email")?.ifBlank { null } ?: user.email.orEmpty(),
         role = roleOf(getString("role")),
         active = getBoolean("active") ?: true,
     )

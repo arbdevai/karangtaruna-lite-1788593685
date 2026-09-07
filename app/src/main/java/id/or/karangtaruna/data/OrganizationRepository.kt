@@ -74,6 +74,26 @@ class OrganizationRepository(private val db: FirebaseFirestore, private val uid:
         db.runBatch { batch -> batch.set(ref, mapOf("fullName" to member.fullName.trim(), "normalizedName" to member.fullName.trim().lowercase(), "phoneNumber" to member.phoneNumber?.trim()?.ifBlank { null }, "status" to member.status.name, "createdAt" to FieldValue.serverTimestamp(), "updatedAt" to FieldValue.serverTimestamp()), com.google.firebase.firestore.SetOptions.merge()); batch.set(db.collection("auditLogs").document(), mapOf("actorUid" to actor, "action" to "MEMBER_SAVED", "entityType" to "MEMBER", "entityId" to ref.id, "timestamp" to FieldValue.serverTimestamp(), "summary" to member.fullName.trim())) }.await()
     }
 
+    suspend fun users(limit: Long = 100): AppResult<List<UserProfile>> = result {
+        db.collection("users").orderBy("displayName").limit(limit.coerceIn(1, 100)).get().await().documents.map { it.toUserProfile() }
+    }
+
+    suspend fun updateUserRole(uid: String, role: Role): AppResult<Unit> = result {
+        val actor = this@OrganizationRepository.uid() ?: error("Sesi berakhir")
+        db.runBatch { batch ->
+            batch.update(db.collection("users").document(uid), mapOf("role" to role.name, "updatedAt" to FieldValue.serverTimestamp()))
+            batch.set(db.collection("auditLogs").document(), mapOf("actorUid" to actor, "action" to "ROLE_UPDATED", "entityType" to "USER", "entityId" to uid, "timestamp" to FieldValue.serverTimestamp(), "summary" to role.name))
+        }.await()
+    }
+
+    private fun com.google.firebase.firestore.DocumentSnapshot.toUserProfile() = UserProfile(
+        uid = id,
+        displayName = getString("displayName").orEmpty().ifBlank { "Warga" },
+        email = getString("email").orEmpty(),
+        role = runCatching { Role.valueOf(getString("role").orEmpty()) }.getOrDefault(Role.VIEWER),
+        active = getBoolean("active") ?: true,
+    )
+
     private suspend fun <T> result(block: suspend () -> T): AppResult<T> = runCatching { block() }.fold({ AppResult.Success(it) }, { AppResult.Failure(it.toUserMessage()) })
     private suspend fun <T> page(query: Query, limit: Long, cursor: Any?, mapper: (com.google.firebase.firestore.DocumentSnapshot) -> T): AppResult<Page<T>> = result { val safeLimit = limit.coerceIn(1, 100); var q = query.limit(safeLimit + 1); if (cursor is com.google.firebase.firestore.DocumentSnapshot) q = q.startAfter(cursor); val snap = q.get().await(); val docs = snap.documents.take(safeLimit.toInt()); Page(docs.map(mapper).distinctBy { it.hashCode() }, snap.size() > safeLimit, docs.lastOrNull()) }
     private fun <T> AppResult<Page<T>>.mapItems(filter: (List<T>) -> List<T>) = when (this) { is AppResult.Success -> AppResult.Success(data.copy(items = filter(data.items))); is AppResult.Failure -> this }

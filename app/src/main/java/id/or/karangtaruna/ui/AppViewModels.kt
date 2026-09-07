@@ -49,7 +49,7 @@ class AuthViewModel(private val repository: AuthRepository) : ViewModel() {
     }
 
     fun loginWithGoogle(activity: android.app.Activity) = execute { repository.signInWithGoogle(activity) }
-    fun retryProfile() = execute { repository.retryProfile() }
+    fun retryProfile() { repository.retryProfile() }
     fun logout() = repository.logout()
     fun clear() { _submit.value = SubmitState() }
 
@@ -124,7 +124,9 @@ class ModuleViewModel(private val repository: OrganizationRepository) : ViewMode
     fun saveTransaction(tx: Transaction) = submitOp("Transaksi tersimpan.") { repository.saveTransaction(tx) }
     fun saveMember(member: Member) = submitOp("Warga tersimpan.") { repository.saveMember(member) }
     fun payDues(periodId: String, memberId: String, amount: Long, paymentDate: Long, note: String?) = submitOp("Pembayaran tercatat.") { repository.recordDuesPayment(periodId, memberId, amount, paymentDate, note) }
-    fun savePeriod(period: DuesPeriod) = submitOp("Periode tersimpan.") { repository.savePeriod(period) }
+    private val _users = MutableStateFlow(ListState<UserProfile>()); val users = _users.asStateFlow()
+    fun loadUsers(refresh: Boolean = false) = load("users", _users, refresh) { repository.users().map { Page(it, false) } }
+    fun updateUserRole(uid: String, role: Role) = submitOp("Peran diperbarui.") { repository.updateUserRole(uid, role) }
     fun saveSettings(name: String, rt: String, duesAmount: Long) = submitOp("Pengaturan tersimpan.") { repository.saveSettings(name, rt, duesAmount) }
     fun clearSubmit() { _submit.value = SubmitState() }
 
@@ -154,6 +156,7 @@ class ModuleViewModel(private val repository: OrganizationRepository) : ViewMode
         }
     }
     private fun stableId(v: Any): String = when (v) {
-        is Transaction -> v.id; is Member -> v.id; is DuesPayment -> v.id; is DuesPeriod -> v.id; else -> v.hashCode().toString()
+        is Transaction -> v.id; is Member -> v.id; is DuesPayment -> v.id; is DuesPeriod -> v.id; is UserProfile -> v.uid; else -> v.hashCode().toString()
     }
+    private fun <T> AppResult<List<T>>.map(transform: (List<T>) -> Page<T>): AppResult<Page<T>> = when (this) { is AppResult.Success -> AppResult.Success(transform(data)); is AppResult.Failure -> this }
 }

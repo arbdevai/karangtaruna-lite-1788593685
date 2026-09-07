@@ -12,6 +12,9 @@ service cloud.firestore {
       allow list: if hasRole(['ADMIN']);
       allow create: if signedIn() && request.auth.uid == uid;
       allow update: if signedIn() && request.auth.uid == uid && request.resource.data.role == resource.data.role;
+      allow update: if hasRole(['ADMIN']) && uid != request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['role','updatedAt'])
+        && request.resource.data.role in ['ADMIN', 'TREASURER', 'VIEWER'];
       allow delete: if false;
     }
 

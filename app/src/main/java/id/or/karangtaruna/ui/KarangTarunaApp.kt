@@ -50,7 +50,8 @@ import id.or.karangtaruna.ui.theme.KarangTarunaTheme
             composable("tx/out") { TransactionFormScreen(TransactionType.EXPENSE, moduleVm) { nav.popBackStack() } }
             composable("members") { MembersScreen(moduleVm) { nav.navigate("members/new") } }
             composable("members/new") { MemberFormScreen(moduleVm) { nav.popBackStack() } }
-            composable("profile") { ProfileScreen(profile, authVm) { nav.popBackStack() } }
+            composable("profile") { ProfileScreen(profile, authVm, { nav.popBackStack() }) { nav.navigate("roles") } }
+            composable("roles") { RoleManagementScreen(moduleVm) { nav.popBackStack() } }
         }
     }
 }
