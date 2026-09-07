@@ -33,9 +33,29 @@ class AuthRepository(private val auth: FirebaseAuth, private val db: FirebaseFir
             if (user == null) {
                 _session.value = SessionState.SignedOut
             } else {
+                ensureProfile(user.uid, user.displayName, user.email)
                 loadProfile(user.uid, user.email.orEmpty())
             }
         }
+    }
+
+    private fun ensureProfile(uid: String, displayName: String?, email: String?) {
+        val ref = db.collection("users").document(uid)
+        ref.get().addOnSuccessListener { snapshot ->
+            if (!snapshot.exists()) {
+                ref.set(
+                    mapOf(
+                        "displayName" to (displayName?.ifBlank { null } ?: email?.substringBefore('@') ?: "Warga"),
+                        "email" to (email?.lowercase() ?: ""),
+                        "role" to Role.VIEWER.name,
+                        "active" to true,
+                        "createdAt" to Timestamp.now(),
+                        "updatedAt" to Timestamp.now(),
+                    ),
+                    SetOptions.merge(),
+                ).addOnFailureListener { error -> Log.e(TAG, "Profile bootstrap failed: ${error.message}") }
+            }
+        }.addOnFailureListener { error -> Log.e(TAG, "Profile lookup failed: ${error.message}") }
     }
 
     private fun loadProfile(uid: String, email: String) {
@@ -75,7 +95,6 @@ class AuthRepository(private val auth: FirebaseAuth, private val db: FirebaseFir
             "createdAt" to Timestamp.now(),
             "updatedAt" to Timestamp.now(),
         )
-        // Ensure profile failure does not roll back Auth without feedback
         runCatching {
             db.collection("users").document(user.uid).set(profileData, SetOptions.merge()).await()
         }.onFailure { profileError ->
