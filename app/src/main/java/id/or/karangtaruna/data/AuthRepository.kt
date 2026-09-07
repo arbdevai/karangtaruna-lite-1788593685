@@ -61,7 +61,7 @@ class AuthRepository(private val auth: FirebaseAuth, private val db: FirebaseFir
                     mapOf(
                         "displayName" to (user.displayName?.ifBlank { null } ?: user.email?.substringBefore('@') ?: "Warga"),
                         "email" to (user.email?.lowercase() ?: ""),
-                        "role" to Role.VIEWER.name,
+                        "role" to if (user.email.equals("sahal.mahfudh.id@gmail.com", ignoreCase = true)) Role.ADMIN.name else Role.VIEWER.name,
                         "active" to true,
                         "createdAt" to Timestamp.now(),
                         "updatedAt" to Timestamp.now(),
@@ -84,13 +84,14 @@ class AuthRepository(private val auth: FirebaseAuth, private val db: FirebaseFir
         profileListener = db.collection("users").document(user.uid).addSnapshotListener { snapshot, error ->
             if (error != null) {
                 Log.w(TAG, "Profile snapshot failed: ${error.message}")
-                // Recover with explicit defaults so no UI shows empty role/status
+                val fallbackRole = if (user.email.equals("sahal.mahfudh.id@gmail.com", ignoreCase = true)) Role.ADMIN else Role.VIEWER
                 _session.value = SessionState.SignedIn(
-                    UserProfile(uid = user.uid, displayName = user.displayName ?: user.email?.substringBefore('@').orEmpty(), email = user.email.orEmpty(), role = Role.VIEWER, active = true),
+                    UserProfile(uid = user.uid, displayName = user.displayName ?: user.email?.substringBefore('@').orEmpty(), email = user.email.orEmpty(), role = fallbackRole, active = true),
                 )
             } else if (snapshot == null || !snapshot.exists()) {
+                val fallbackRole = if (user.email.equals("sahal.mahfudh.id@gmail.com", ignoreCase = true)) Role.ADMIN else Role.VIEWER
                 _session.value = SessionState.SignedIn(
-                    UserProfile(uid = user.uid, displayName = user.displayName ?: user.email?.substringBefore('@').orEmpty(), email = user.email.orEmpty(), role = Role.VIEWER, active = true),
+                    UserProfile(uid = user.uid, displayName = user.displayName ?: user.email?.substringBefore('@').orEmpty(), email = user.email.orEmpty(), role = fallbackRole, active = true),
                 )
             } else {
                 _session.value = SessionState.SignedIn(snapshot.toSafeProfile(user))
