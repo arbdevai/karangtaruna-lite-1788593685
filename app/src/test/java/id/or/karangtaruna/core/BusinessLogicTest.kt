@@ -3,6 +3,7 @@ package id.or.karangtaruna.core
 import id.or.karangtaruna.core.auth.RoleCapabilities
 import id.or.karangtaruna.core.auth.Permission
 import id.or.karangtaruna.core.auth.Validation
+import id.or.karangtaruna.core.auth.Validation
 import id.or.karangtaruna.core.model.*
 import id.or.karangtaruna.core.util.Formatters
 import org.junit.Assert.*
@@ -19,6 +20,14 @@ class BusinessLogicTest {
         assertNotNull(Validation.amount(0))
         assertNotNull(Validation.amount(-1000))
         assertNull(Validation.amount(50000))
+    }
+
+    @Test fun testAuthValidation() {
+        assertNotNull(Validation.email("not-an-email"))
+        assertNull(Validation.email("bendahara@example.com"))
+        assertNotNull(Validation.password("short"))
+        assertNotNull(Validation.password("onlyletters"))
+        assertNull(Validation.password("aman1234"))
     }
 
     @Test fun testMemberNameValidation() {

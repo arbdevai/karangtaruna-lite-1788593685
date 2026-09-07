@@ -2,6 +2,7 @@ package id.or.karangtaruna.ui
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import id.or.karangtaruna.core.auth.Validation
 import id.or.karangtaruna.core.model.*
 import id.or.karangtaruna.data.AuthRepository
 import id.or.karangtaruna.data.OrganizationRepository
@@ -10,18 +11,47 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
-data class SubmitState(val loading: Boolean = false, val error: String? = null, val success: String? = null)
+data class SubmitState(
+    val loading: Boolean = false,
+    val error: String? = null,
+    val success: String? = null,
+    val fieldErrors: Map<String, String> = emptyMap(),
+)
 
 class AuthViewModel(private val repository: AuthRepository) : ViewModel() {
     val session: StateFlow<SessionState> = repository.session
     private val _submit = MutableStateFlow(SubmitState())
     val submit = _submit.asStateFlow()
-    fun login(email: String, password: String) = execute { repository.login(email, password) }
-    fun register(name: String, email: String, password: String) = execute("Pendaftaran berhasil.") { repository.register(name, email, password) }
-    fun reset(email: String) = execute("Tautan pengaturan ulang telah dikirim.") { repository.resetPassword(email) }
+
+    fun login(email: String, password: String) {
+        val fieldErrors = mutableMapOf<String, String>()
+        Validation.email(email)?.let { fieldErrors["email"] = it }
+        if (password.isBlank()) fieldErrors["password"] = "Kata sandi wajib diisi."
+        if (fieldErrors.isNotEmpty()) { _submit.value = SubmitState(fieldErrors = fieldErrors); return }
+        execute { repository.login(email, password) }
+    }
+
+    fun register(name: String, email: String, password: String) {
+        val fieldErrors = mutableMapOf<String, String>()
+        if (name.isBlank()) fieldErrors["name"] = "Nama wajib diisi."
+        else name.trim().let { if (it.length < 2) fieldErrors["name"] = "Nama minimal 2 karakter." else if (it.length > 80) fieldErrors["name"] = "Nama terlalu panjang." }
+        Validation.email(email)?.let { fieldErrors["email"] = it }
+        Validation.password(password)?.let { fieldErrors["password"] = it }
+        if (fieldErrors.isNotEmpty()) { _submit.value = SubmitState(fieldErrors = fieldErrors); return }
+        execute("Pendaftaran berhasil.") { repository.register(name, email, password) }
+    }
+
+    fun reset(email: String) {
+        val fieldErrors = mutableMapOf<String, String>()
+        Validation.email(email)?.let { fieldErrors["email"] = it }
+        if (fieldErrors.isNotEmpty()) { _submit.value = SubmitState(fieldErrors = fieldErrors); return }
+        execute("Tautan pengaturan ulang telah dikirim.") { repository.resetPassword(email) }
+    }
+
     fun loginWithGoogle(activity: android.app.Activity) = execute { repository.signInWithGoogle(activity) }
     fun logout() = repository.logout()
     fun clear() { _submit.value = SubmitState() }
+
     private fun execute(success: String? = null, block: suspend () -> AppResult<Unit>) {
         if (_submit.value.loading) return
         viewModelScope.launch {

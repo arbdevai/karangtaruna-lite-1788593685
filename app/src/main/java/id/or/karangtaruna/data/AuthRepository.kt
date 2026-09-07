@@ -1,10 +1,12 @@
 package id.or.karangtaruna.data
 
 import android.app.Activity
+import android.util.Log
 import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.OAuthProvider
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.SetOptions
 import id.or.karangtaruna.core.data.toUserMessage
 import id.or.karangtaruna.core.model.AppResult
 import id.or.karangtaruna.core.model.Role
@@ -12,6 +14,8 @@ import id.or.karangtaruna.core.model.UserProfile
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.tasks.await
+
+private const val TAG = "KarangTarunaAuthRepo"
 
 sealed interface SessionState {
     data object Loading : SessionState
@@ -36,13 +40,16 @@ class AuthRepository(private val auth: FirebaseAuth, private val db: FirebaseFir
 
     private fun loadProfile(uid: String, email: String) {
         db.collection("users").document(uid).addSnapshotListener { snapshot, error ->
+            if (error != null) {
+                Log.w(TAG, "Snapshot error for user $uid: ${error.message}")
+            }
             _session.value = if (error != null || snapshot == null || !snapshot.exists()) {
-                SessionState.SignedIn(UserProfile(uid, email = email, displayName = email.substringBefore('@'), role = Role.VIEWER))
+                SessionState.SignedIn(UserProfile(uid, email = email, displayName = email.substringBefore('@').ifBlank { "Warga" }, role = Role.VIEWER))
             } else {
                 SessionState.SignedIn(
                     UserProfile(
                         uid = uid,
-                        displayName = snapshot.getString("displayName").orEmpty(),
+                        displayName = snapshot.getString("displayName")?.ifBlank { email.substringBefore('@') } ?: "Warga",
                         email = snapshot.getString("email") ?: email,
                         role = roleOf(snapshot.getString("role")),
                         active = snapshot.getBoolean("active") ?: true,
@@ -55,47 +62,58 @@ class AuthRepository(private val auth: FirebaseAuth, private val db: FirebaseFir
     suspend fun login(email: String, password: String): AppResult<Unit> = runCatching {
         auth.signInWithEmailAndPassword(email.trim(), password).await()
         Unit
-    }.fold({ AppResult.Success(it) }, { AppResult.Failure(it.toUserMessage()) })
+    }.fold({ AppResult.Success(it) }, { AppResult.Failure(it.toUserMessage("masuk")) })
 
     suspend fun register(name: String, email: String, password: String): AppResult<Unit> = runCatching {
-        val user = auth.createUserWithEmailAndPassword(email.trim(), password).await().user ?: error("Akun tidak tersedia")
-        db.collection("users").document(user.uid).set(
-            mapOf(
-                "displayName" to name.trim(),
-                "email" to email.trim().lowercase(),
-                "role" to Role.VIEWER.name,
-                "active" to true,
-                "createdAt" to Timestamp.now(),
-                "updatedAt" to Timestamp.now(),
-            ),
-        ).await()
+        val authResult = auth.createUserWithEmailAndPassword(email.trim(), password).await()
+        val user = authResult.user ?: error("Akun tidak tersedia")
+        val profileData = mapOf(
+            "displayName" to name.trim(),
+            "email" to email.trim().lowercase(),
+            "role" to Role.VIEWER.name,
+            "active" to true,
+            "createdAt" to Timestamp.now(),
+            "updatedAt" to Timestamp.now(),
+        )
+        // Ensure profile failure does not roll back Auth without feedback
+        runCatching {
+            db.collection("users").document(user.uid).set(profileData, SetOptions.merge()).await()
+        }.onFailure { profileError ->
+            Log.e(TAG, "Profile creation failed after successful registration: ${profileError.message}")
+        }
         Unit
-    }.fold({ AppResult.Success(it) }, { AppResult.Failure(it.toUserMessage()) })
+    }.fold({ AppResult.Success(it) }, { AppResult.Failure(it.toUserMessage("mendaftar")) })
 
     suspend fun resetPassword(email: String): AppResult<Unit> = runCatching {
         auth.sendPasswordResetEmail(email.trim()).await()
         Unit
-    }.fold({ AppResult.Success(it) }, { AppResult.Failure(it.toUserMessage()) })
+    }.fold({ AppResult.Success(it) }, { AppResult.Failure(it.toUserMessage("mengirim reset kata sandi")) })
 
     suspend fun signInWithGoogle(activity: Activity): AppResult<Unit> = runCatching {
         val provider = OAuthProvider.newBuilder("google.com").build()
         val result = auth.startActivityForSignInWithProvider(activity, provider).await()
         val user = result.user ?: error("Akun Google tidak tersedia")
-        val ref = db.collection("users").document(user.uid)
-        if (!ref.get().await().exists()) {
-            ref.set(
-                mapOf(
-                    "displayName" to (user.displayName ?: user.email?.substringBefore('@') ?: "Pengguna"),
-                    "email" to (user.email?.lowercase() ?: ""),
-                    "role" to Role.VIEWER.name,
-                    "active" to true,
-                    "createdAt" to Timestamp.now(),
-                    "updatedAt" to Timestamp.now(),
-                ),
-            ).await()
+        val userRef = db.collection("users").document(user.uid)
+        runCatching {
+            val snapshot = userRef.get().await()
+            if (!snapshot.exists()) {
+                userRef.set(
+                    mapOf(
+                        "displayName" to (user.displayName?.ifBlank { null } ?: user.email?.substringBefore('@') ?: "Pengguna"),
+                        "email" to (user.email?.lowercase() ?: ""),
+                        "role" to Role.VIEWER.name,
+                        "active" to true,
+                        "createdAt" to Timestamp.now(),
+                        "updatedAt" to Timestamp.now(),
+                    ),
+                    SetOptions.merge(),
+                ).await()
+            }
+        }.onFailure { profileError ->
+            Log.e(TAG, "Google profile creation failed: ${profileError.message}")
         }
         Unit
-    }.fold({ AppResult.Success(it) }, { AppResult.Failure(it.toUserMessage()) })
+    }.fold({ AppResult.Success(it) }, { AppResult.Failure(it.toUserMessage("login Google")) })
 
     fun logout() = auth.signOut()
 

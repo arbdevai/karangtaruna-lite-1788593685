@@ -1,7 +1,7 @@
-<resources xmlns:tools="http://schemas.android.com/tools">
+<resources>
     <style name="Theme.KarangTaruna" parent="android:style/Theme.Material.Light.NoActionBar">
         <item name="android:fontFamily">sans</item>
-        <item name="android:colorAccent">#1B6B52</item>
+        <item name="android:colorAccent">#176B53</item>
         <item name="android:navigationBarColor">#F4F5F6</item>
         <item name="android:statusBarColor">#F4F5F6</item>
         <item name="android:windowLightStatusBar">true</item>

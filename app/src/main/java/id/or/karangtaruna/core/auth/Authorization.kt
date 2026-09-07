@@ -17,7 +17,20 @@ object RoleCapabilities {
 }
 
 object Validation {
+    private val emailPattern = Regex("^[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}$", RegexOption.IGNORE_CASE)
+
     fun required(value: String?, label: String): String? = if (value.isNullOrBlank()) "$label wajib diisi." else null
+    fun email(value: String): String? = when {
+        value.isBlank() -> "Email wajib diisi."
+        !emailPattern.matches(value.trim()) -> "Format email tidak valid."
+        else -> null
+    }
+    fun password(value: String): String? = when {
+        value.isBlank() -> "Kata sandi wajib diisi."
+        value.length < 8 -> "Kata sandi minimal 8 karakter."
+        value.none(Char::isLetter) || value.none(Char::isDigit) -> "Gunakan huruf dan angka pada kata sandi."
+        else -> null
+    }
     fun amount(value: Long?): String? = when {
         value == null -> "Nominal wajib diisi."
         value <= 0 -> "Nominal harus lebih dari Rp0."
