@@ -3,8 +3,8 @@ service cloud.firestore {
   match /databases/{database}/documents {
     function signedIn() { return request.auth != null; }
     function userDoc() { return get(/databases/$(database)/documents/users/$(request.auth.uid)); }
-    function active() { return signedIn() && userDoc().data.active == true; }
-    function hasRole(roles) { return active() && userDoc().data.role in roles; }
+    function isActive() { return signedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid)) && userDoc().data.active == true; }
+    function hasRole(roles) { return isActive() && userDoc().data.role in roles; }
     function treasurer() { return hasRole(['ADMIN', 'TREASURER']); }
 
     match /users/{uid} {
@@ -19,37 +19,37 @@ service cloud.firestore {
     }
 
     match /members/{memberId} {
-      allow read: if active();
+      allow read: if signedIn();
       allow create, update: if treasurer();
       allow delete: if false;
     }
 
     match /transactions/{transactionId} {
-      allow read: if active();
+      allow read: if signedIn();
       allow create, update: if treasurer();
       allow delete: if false;
     }
 
     match /duesPeriods/{periodId} {
-      allow read: if active();
+      allow read: if signedIn();
       allow create, update: if treasurer();
       allow delete: if false;
     }
 
     match /duesPayments/{paymentId} {
-      allow read: if active();
+      allow read: if signedIn();
       allow create, update: if treasurer();
       allow delete: if false;
     }
 
     match /settings/{docId} {
-      allow read: if active();
+      allow read: if signedIn();
       allow write: if hasRole(['ADMIN']);
     }
 
     match /auditLogs/{logId} {
       allow read: if hasRole(['ADMIN']);
-      allow create: if active();
+      allow create: if signedIn();
       allow update, delete: if false;
     }
   }
