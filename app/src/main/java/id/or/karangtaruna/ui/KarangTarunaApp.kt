@@ -26,7 +26,6 @@ import id.or.karangtaruna.ui.theme.KarangTarunaTheme
         when (sessionValue) {
             SessionState.Loading -> LoadingScreen()
             SessionState.SignedOut -> AuthScreen(authVm)
-            is SessionState.ProfileUnavailable -> ProfileErrorScreen((sessionValue as SessionState.ProfileUnavailable).message, authVm)
             is SessionState.SignedIn -> MainShell((sessionValue as SessionState.SignedIn).profile, authVm)
         }
     }
