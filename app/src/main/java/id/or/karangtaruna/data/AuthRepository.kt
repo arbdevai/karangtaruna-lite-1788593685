@@ -18,6 +18,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 
 private const val TAG = "KarangTarunaAuthRepo"
@@ -36,7 +37,8 @@ class AuthRepository(private val auth: FirebaseAuth, private val db: FirebaseFir
     private var profileListener: ListenerRegistration? = null
 
     init {
-        auth.addAuthStateListener { user ->
+        auth.addAuthStateListener {
+            val user = auth.currentUser
             profileListener?.remove()
             profileListener = null
             if (user == null) {
@@ -120,11 +122,13 @@ class AuthRepository(private val auth: FirebaseAuth, private val db: FirebaseFir
         Unit
     }.fold({ AppResult.Success(it) }, { AppResult.Failure(it.toUserMessage("mengirim reset kata sandi")) })
 
-    suspend fun signInWithGoogle(activity: Activity): AppResult<Unit> = runCatching {
+    suspend fun signInWithGoogle(activity: Activity): AppResult<Unit> = try {
         val provider = OAuthProvider.newBuilder("google.com").build()
         val user = auth.startActivityForSignInWithProvider(activity, provider).await().user ?: error("Akun Google tidak tersedia")
-        provisionProfile(user).getOrThrow()
-    }.fold({ AppResult.Success(it) }, { AppResult.Failure(it.toUserMessage("login Google")) })
+        provisionProfile(user)
+    } catch (e: Throwable) {
+        AppResult.Failure(e.toUserMessage("login Google"))
+    }
 
     fun logout() = auth.signOut()
 
