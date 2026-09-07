@@ -26,10 +26,20 @@ class OrganizationRepository(private val db: FirebaseFirestore, private val uid:
         FinanceSummary(income - expense, income, expense)
     }
 
-    suspend fun transactions(limit: Long = 30, cursor: Any? = null, type: TransactionType? = null): AppResult<Page<Transaction>> = page(db.collection("transactions").whereEqualTo("archived", false).let { if (type == null) it else it.whereEqualTo("type", type.name) }.orderBy("transactionDate", Query.Direction.DESCENDING), limit, cursor) { snap -> snap.toTransaction() }
-    suspend fun members(limit: Long = 30, cursor: Any? = null, queryText: String = ""): AppResult<Page<Member>> = page(db.collection("members").whereEqualTo("status", MemberStatus.ACTIVE.name).orderBy("normalizedName"), limit, cursor) { it.toMember() }.mapItems { if (queryText.isBlank()) it else it.filter { member -> member.fullName.contains(queryText, true) } }
-    suspend fun dues(periodId: String, limit: Long = 50, cursor: Any? = null): AppResult<Page<DuesPayment>> = page(db.collection("duesPayments").whereEqualTo("periodId", periodId).orderBy("memberId"), limit, cursor) { it.toDuesPayment() }
-    suspend fun periods(limit: Long = 24, cursor: Any? = null): AppResult<Page<DuesPeriod>> = page(db.collection("duesPeriods").orderBy("year", Query.Direction.DESCENDING).orderBy("month", Query.Direction.DESCENDING), limit, cursor) { it.toDuesPeriod() }
+    // Keep list queries on single-field indexes. Composite indexes are optional and may not exist on a new RT project.
+    suspend fun transactions(limit: Long = 30, cursor: Any? = null, type: TransactionType? = null): AppResult<Page<Transaction>> = page(
+        db.collection("transactions").orderBy("transactionDate", Query.Direction.DESCENDING), limit, cursor,
+    ) { it.toTransaction() }.mapItems { items -> items.filter { type == null || it.type == type } }
+    suspend fun members(limit: Long = 30, cursor: Any? = null, queryText: String = ""): AppResult<Page<Member>> = page(
+        db.collection("members").orderBy("normalizedName"), limit, cursor,
+    ) { it.toMember() }.mapItems { items -> items.filter { it.status == MemberStatus.ACTIVE && (queryText.isBlank() || it.fullName.contains(queryText, true)) } }
+    suspend fun dues(periodId: String, limit: Long = 50, cursor: Any? = null): AppResult<Page<DuesPayment>> = page(
+        db.collection("duesPayments").whereEqualTo("periodId", periodId), limit, cursor,
+    ) { it.toDuesPayment() }
+    suspend fun periods(limit: Long = 24, cursor: Any? = null): AppResult<Page<DuesPeriod>> = page(
+        db.collection("duesPeriods").orderBy("year", Query.Direction.DESCENDING), limit, cursor,
+    ) { it.toDuesPeriod() }.mapItems { items -> items.sortedWith(compareByDescending<DuesPeriod> { it.year }.thenByDescending { it.month }) }
+
 
     suspend fun savePeriod(period: DuesPeriod): AppResult<Unit> = result {
         val actor = uid() ?: error("Sesi berakhir")
