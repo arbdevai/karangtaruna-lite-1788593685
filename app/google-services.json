@@ -12,7 +12,20 @@
           "package_name": "id.or.karangtaruna"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "18229753817-ough1d9ta5ali9thsrbr9m03nh6rkolg.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "id.or.karangtaruna",
+            "certificate_hash": "7dcaf54bbf4eb91b62f144c7f2b457b2258ea114"
+          }
+        },
+        {
+          "client_id": "18229753817-3vb3v6qr720mg5qnr7b9uh9hq9q9aork.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyDjNIXUgG5NjE8ysSx0iMKfkKn0D_pMTMM"
@@ -20,26 +33,12 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
-        }
-      }
-    },
-    {
-      "client_info": {
-        "mobilesdk_app_id": "1:18229753817:android:5a0f2fd1ee312453690bc9",
-        "android_client_info": {
-          "package_name": "id.or.karangtaruna.debug"
-        }
-      },
-      "oauth_client": [],
-      "api_key": [
-        {
-          "current_key": "AIzaSyDjNIXUgG5NjE8ysSx0iMKfkKn0D_pMTMM"
-        }
-      ],
-      "services": {
-        "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "18229753817-3vb3v6qr720mg5qnr7b9uh9hq9q9aork.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }
