@@ -119,13 +119,11 @@ class AuthRepository(private val auth: FirebaseAuth, private val db: FirebaseFir
         Unit
     }.fold({ AppResult.Success(it) }, { AppResult.Failure(it.toUserMessage("mengirim reset kata sandi")) })
 
-    suspend fun signInWithGoogle(activity: Activity): AppResult<Unit> = try {
+    suspend fun signInWithGoogle(activity: Activity): AppResult<Unit> = runCatching {
         val provider = OAuthProvider.newBuilder("google.com").build()
         auth.startActivityForSignInWithProvider(activity, provider).await()
         Unit
-    } catch (e: Throwable) {
-        AppResult.Failure(e.toUserMessage("login Google"))
-    }
+    }.fold({ AppResult.Success(it) }, { AppResult.Failure(it.toUserMessage("login Google")) })
 
     fun logout() = auth.signOut()
 
