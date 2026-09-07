@@ -24,7 +24,7 @@ fun Throwable.toUserMessage(operation: String = "auth"): String {
         "ERROR_OPERATION_NOT_ALLOWED" -> "Metode masuk ini belum diaktifkan di Firebase."
         "ERROR_ACCOUNT_EXISTS_WITH_DIFFERENT_CREDENTIAL" -> "Email sudah terhubung dengan metode masuk lain."
         "ERROR_CREDENTIAL_ALREADY_IN_USE" -> "Akun Google sudah digunakan akun lain."
-        "ERROR_WEB_CONTEXT_CANCELED", "ERROR_CANCELED" -> "Login Google dibatalkan."
+        "ERROR_WEB_CONTEXT_CANCELED", "ERROR_CANCELED", "12501" -> "Login Google dibatalkan."
         "ERROR_WEB_INTERNAL_ERROR", "ERROR_WEB_STORAGE_UNSUPPORTED" -> "Login Google belum siap di perangkat ini."
         else -> when (this) {
             is FirebaseNetworkException -> "Tidak dapat terhubung ke server. Periksa koneksi internet."
@@ -33,9 +33,10 @@ fun Throwable.toUserMessage(operation: String = "auth"): String {
                 FirebaseFirestoreException.Code.UNAVAILABLE -> "Layanan sedang sibuk. Coba sesaat lagi."
                 FirebaseFirestoreException.Code.FAILED_PRECONDITION -> "Data belum siap. Periksa index Firestore atau coba lagi."
                 FirebaseFirestoreException.Code.NOT_FOUND -> "Data tidak ditemukan."
-                else -> "Data gagal dimuat. Coba lagi."
+                else -> "Data gagal dimuat (${this.code.name.lowercase()}). Coba lagi."
             }
-            else -> "Terjadi kesalahan saat $operation. Coba lagi."
+            is IllegalStateException -> message ?: "Operasi tidak dapat dilakukan."
+            else -> "Terjadi kesalahan saat $operation (${this::class.java.simpleName}: ${message ?: "tanpa detail"}). Coba lagi."
         }
     }
 }
