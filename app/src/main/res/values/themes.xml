@@ -1,9 +1,11 @@
 <resources>
-    <style name="Theme.KarangTaruna" parent="android:style/Theme.Material.Light.NoActionBar">
+    <style name="Theme.KarangTaruna" parent="android:style/Theme.Material.NoActionBar">
         <item name="android:fontFamily">sans</item>
-        <item name="android:colorAccent">#176B53</item>
-        <item name="android:navigationBarColor">#F4F5F6</item>
-        <item name="android:statusBarColor">#F4F5F6</item>
-        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:colorAccent">#6EC9A9</item>
+        <item name="android:navigationBarColor">#0F1110</item>
+        <item name="android:statusBarColor">#0F1110</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightNavigationBar">false</item>
+        <item name="android:windowBackground">#0F1110</item>
     </style>
 </resources>
