@@ -31,6 +31,7 @@ fun Throwable.toUserMessage(operation: String = "auth"): String {
             is FirebaseFirestoreException -> when (this.code) {
                 FirebaseFirestoreException.Code.PERMISSION_DENIED -> "Anda tidak memiliki izin untuk membaca atau mengubah data ini."
                 FirebaseFirestoreException.Code.UNAVAILABLE -> "Layanan sedang sibuk. Coba sesaat lagi."
+                FirebaseFirestoreException.Code.FAILED_PRECONDITION -> "Data belum siap. Periksa index Firestore atau coba lagi."
                 FirebaseFirestoreException.Code.NOT_FOUND -> "Data tidak ditemukan."
                 else -> "Data gagal dimuat. Coba lagi."
             }
