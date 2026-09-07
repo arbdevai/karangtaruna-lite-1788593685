@@ -28,7 +28,7 @@ fun Throwable.toUserMessage(operation: String = "auth"): String {
         "ERROR_WEB_INTERNAL_ERROR", "ERROR_WEB_STORAGE_UNSUPPORTED" -> "Login Google belum siap di perangkat ini."
         else -> when (this) {
             is FirebaseNetworkException -> "Tidak dapat terhubung ke server. Periksa koneksi internet."
-            is FirebaseFirestoreException -> when (code) {
+            is FirebaseFirestoreException -> when (this.code) {
                 FirebaseFirestoreException.Code.PERMISSION_DENIED -> "Akun berhasil masuk, tetapi profil belum diizinkan."
                 FirebaseFirestoreException.Code.UNAVAILABLE -> "Layanan sedang sibuk. Coba sesaat lagi."
                 else -> "Profil belum tersimpan. Coba lagi."
