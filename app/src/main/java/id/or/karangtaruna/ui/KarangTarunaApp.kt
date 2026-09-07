@@ -42,7 +42,7 @@ import id.or.karangtaruna.ui.theme.KarangTarunaTheme
     val route = entry?.destination?.route ?: "home"
     Scaffold(containerColor = AppColors.background, bottomBar = { AppBottomNavigation(route) { nav.navigate(it) { launchSingleTop = true; restoreState = true } } }) { padding ->
         NavHost(nav, "home", Modifier.padding(padding)) {
-            composable("home") { val state by homeVm.state.collectAsStateWithLifecycle(); HomeScreen(FinanceSummary(state.balance, state.incomeMonth, state.expenseMonth), "RT", state.transactions) { dest -> nav.navigate(dest) } }
+            composable("home") { val state by homeVm.state.collectAsStateWithLifecycle(); HomeScreen(FinanceSummary(state.balance, state.incomeMonth, state.expenseMonth), "RT", state.transactions, { dest -> nav.navigate(dest) }, { homeVm.refresh() }) }
             composable("dues") { DuesScreen(moduleVm) { nav.navigate("dues/new") } }
             composable("dues/new") { DuesFormScreen(moduleVm) { nav.popBackStack() } }
             composable("tx_list") { TransactionsScreen(moduleVm) { type -> nav.navigate(if (type == TransactionType.INCOME) "tx/in" else "tx/out") } }
