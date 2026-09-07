@@ -49,6 +49,7 @@ class AuthViewModel(private val repository: AuthRepository) : ViewModel() {
     }
 
     fun loginWithGoogle(activity: android.app.Activity) = execute { repository.signInWithGoogle(activity) }
+    fun retryProfile() = execute { repository.retryProfile() }
     fun logout() = repository.logout()
     fun clear() { _submit.value = SubmitState() }
 

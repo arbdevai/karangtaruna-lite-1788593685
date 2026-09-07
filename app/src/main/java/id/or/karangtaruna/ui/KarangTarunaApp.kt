@@ -26,6 +26,7 @@ import id.or.karangtaruna.ui.theme.KarangTarunaTheme
         when (sessionValue) {
             SessionState.Loading -> LoadingScreen()
             SessionState.SignedOut -> AuthScreen(authVm)
+            is SessionState.ProfileUnavailable -> ProfileErrorScreen(sessionValue.message, authVm)
             is SessionState.SignedIn -> {
                 val profile: UserProfile = sessionValue.profile
                 MainShell(profile, authVm)
@@ -49,13 +50,14 @@ import id.or.karangtaruna.ui.theme.KarangTarunaTheme
             composable("tx/out") { TransactionFormScreen(TransactionType.EXPENSE, moduleVm) { nav.popBackStack() } }
             composable("members") { MembersScreen(moduleVm) { nav.navigate("members/new") } }
             composable("members/new") { MemberFormScreen(moduleVm) { nav.popBackStack() } }
+            composable("profile") { ProfileScreen(profile, authVm) { nav.popBackStack() } }
         }
     }
 }
 
 @Composable private fun FloatingNav(route: String, navigate: (String) -> Unit) {
     NavigationBar(containerColor = Color(0xFF181818), contentColor = Color.White, modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp)) {
-        listOf("home" to ("Beranda" to Icons.Default.Home), "dues" to ("Iuran" to Icons.Default.Payments), "tx_list" to ("Transaksi" to Icons.Default.ReceiptLong), "members" to ("Warga" to Icons.Default.People)).forEach { (destination, labelIcon) -> NavigationBarItem(selected = route == destination, onClick = { navigate(destination) }, icon = { Icon(labelIcon.second, labelIcon.first) }, label = { Text(labelIcon.first) }, colors = NavigationBarItemDefaults.colors(selectedIconColor = Color.White, selectedTextColor = Color.White, indicatorColor = Color(0xFF3B4642), unselectedIconColor = Color(0xFFAAB2AD), unselectedTextColor = Color(0xFFAAB2AD))) }
+        listOf("home" to ("Beranda" to Icons.Default.Home), "dues" to ("Iuran" to Icons.Default.Payments), "tx_list" to ("Transaksi" to Icons.Default.ReceiptLong), "members" to ("Warga" to Icons.Default.People), "profile" to ("Profil" to Icons.Default.Person)).forEach { (destination, labelIcon) -> NavigationBarItem(selected = route == destination, onClick = { navigate(destination) }, icon = { Icon(labelIcon.second, labelIcon.first) }, label = { Text(labelIcon.first) }, colors = NavigationBarItemDefaults.colors(selectedIconColor = Color.White, selectedTextColor = Color.White, indicatorColor = Color(0xFF3B4642), unselectedIconColor = Color(0xFFAAB2AD), unselectedTextColor = Color(0xFFAAB2AD))) }
     }
 }
 
