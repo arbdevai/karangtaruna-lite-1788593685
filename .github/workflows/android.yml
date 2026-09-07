@@ -72,14 +72,8 @@ jobs:
           EOF
           fi
           if [ ! -f keystore.properties ]; then exit 1; fi
-      - name: Unit tests
-        run: ./gradlew --no-daemon testDebugUnitTest
-      - name: Android lint
-        run: ./gradlew --no-daemon lintDebug
-      - name: Assemble debug APK
-        run: ./gradlew --no-daemon assembleDebug
-      - name: Assemble release candidate
-        run: ./gradlew --no-daemon assembleRelease
+      - name: Test, lint, and assemble APKs
+        run: ./gradlew --no-daemon testDebugUnitTest lintDebug assembleDebug assembleRelease
       - name: Verify APK signatures
         run: |
           find app/build/outputs/apk -type f -name "*.apk" -print -exec keytool -printcert -jarfile {} \; 2>&1 | head -80 || true
