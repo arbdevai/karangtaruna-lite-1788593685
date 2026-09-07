@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "18229753817",
+    "project_id": "krangtaruna--app-lite",
+    "storage_bucket": "krangtaruna--app-lite.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:18229753817:android:5a0f2fd1ee312453690bc8",
+        "android_client_info": {
+          "package_name": "id.or.karangtaruna"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDjNIXUgG5NjE8ysSx0iMKfkKn0D_pMTMM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:18229753817:android:5a0f2fd1ee312453690bc9",
+        "android_client_info": {
+          "package_name": "id.or.karangtaruna.debug"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDjNIXUgG5NjE8ysSx0iMKfkKn0D_pMTMM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -35,9 +35,8 @@ android {
     }
     buildTypes {
         debug {
-            applicationIdSuffix = ".debug"
+            // Keep the Firebase application id identical so one config works for both variants.
             versionNameSuffix = "-debug"
-            // CI assigns the same release key to debug when signing secrets exist.
             if (signingPropertiesFile.exists()) signingConfig = signingConfigs.getByName("release")
         }
         release {

@@ -19,6 +19,7 @@ class AuthViewModel(private val repository: AuthRepository) : ViewModel() {
     fun login(email: String, password: String) = execute { repository.login(email, password) }
     fun register(name: String, email: String, password: String) = execute("Pendaftaran berhasil.") { repository.register(name, email, password) }
     fun reset(email: String) = execute("Tautan pengaturan ulang telah dikirim.") { repository.resetPassword(email) }
+    fun loginWithGoogle(activity: android.app.Activity) = execute { repository.signInWithGoogleProvider(activity) }
     fun logout() = repository.logout()
     fun clear() { _submit.value = SubmitState() }
     private fun execute(success: String? = null, block: suspend () -> AppResult<Unit>) {

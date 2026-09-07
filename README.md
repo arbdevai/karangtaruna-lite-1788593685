@@ -14,9 +14,10 @@ Aplikasi administrasi keuangan Karang Taruna tingkat RT berbasis Jetpack Compose
 ## Setup Firebase
 
 1. Buat project Firebase baru pada tier Spark (Free).
-2. Aktifkan **Email/Password** pada Firebase Authentication.
+2. Aktifkan **Email/Password** dan **Google** pada Firebase Authentication.
 3. Buat database **Cloud Firestore** dan terapkan `firestore.rules` serta `firestore.indexes.json`.
-4. Unduh `google-services.json` dan letakkan di folder `app/`.
+4. Project yang digunakan aplikasi: `krangtaruna--app-lite`.
+5. `app/google-services.json` sudah terhubung ke project tersebut. Jika mengganti project, unduh config baru dan ganti file itu.
 
 ## CI/CD GitHub Actions
 
