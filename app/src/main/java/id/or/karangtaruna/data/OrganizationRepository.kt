@@ -52,16 +52,23 @@ class OrganizationRepository(private val db: FirebaseFirestore, private val uid:
     }
 
     suspend fun saveTransaction(txn: Transaction): AppResult<Unit> = result {
+        require(txn.amount > 0) { "Nominal harus lebih dari Rp0." }
         val actor = uid() ?: error("Sesi berakhir")
         val id = txn.id.ifBlank { UUID.randomUUID().toString() }
         val ref = db.collection("transactions").document(id)
         val summaryRef = db.collection("settings").document("financeSummary")
         val incomeDelta = if (txn.type == TransactionType.INCOME) txn.amount else 0L
         val expenseDelta = if (txn.type == TransactionType.EXPENSE) txn.amount else 0L
-        db.runBatch { batch ->
-            batch.set(ref, mapOf("type" to txn.type.name, "amount" to txn.amount, "category" to txn.category.trim(), "description" to txn.description.trim(), "transactionDate" to txn.transactionDate, "createdBy" to actor, "createdAt" to FieldValue.serverTimestamp(), "updatedAt" to FieldValue.serverTimestamp(), "memberId" to txn.memberId, "duesPaymentId" to txn.duesPaymentId, "note" to txn.note?.trim(), "archived" to false))
-            batch.set(summaryRef, mapOf("income" to FieldValue.increment(incomeDelta), "expense" to FieldValue.increment(expenseDelta)), com.google.firebase.firestore.SetOptions.merge())
-            batch.set(db.collection("auditLogs").document(), mapOf("actorUid" to actor, "action" to if (txn.id.isBlank()) "TRANSACTION_CREATED" else "TRANSACTION_EDITED", "entityType" to "TRANSACTION", "entityId" to id, "timestamp" to FieldValue.serverTimestamp(), "summary" to "${txn.category}: ${txn.amount}"))
+        db.runTransaction { transaction ->
+            val summary = transaction.get(summaryRef)
+            val income = summary.getLong("income") ?: 0L
+            val expense = summary.getLong("expense") ?: 0L
+            if (txn.type == TransactionType.EXPENSE && expense + txn.amount > income) {
+                throw IllegalStateException("Pengeluaran melebihi saldo kas tersedia (${income - expense}).")
+            }
+            transaction.set(ref, mapOf("type" to txn.type.name, "amount" to txn.amount, "category" to txn.category.trim(), "description" to txn.description.trim(), "transactionDate" to txn.transactionDate, "createdBy" to actor, "createdAt" to FieldValue.serverTimestamp(), "updatedAt" to FieldValue.serverTimestamp(), "memberId" to txn.memberId, "duesPaymentId" to txn.duesPaymentId, "note" to txn.note?.trim(), "archived" to false))
+            transaction.set(summaryRef, mapOf("income" to FieldValue.increment(incomeDelta), "expense" to FieldValue.increment(expenseDelta)), com.google.firebase.firestore.SetOptions.merge())
+            transaction.set(db.collection("auditLogs").document(), mapOf("actorUid" to actor, "action" to "TRANSACTION_CREATED", "entityType" to "TRANSACTION", "entityId" to id, "timestamp" to FieldValue.serverTimestamp(), "summary" to "${txn.category}: ${txn.amount}"))
         }.await()
     }
 

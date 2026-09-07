@@ -16,6 +16,11 @@ object Formatters {
     private val timeFormat = DateTimeFormatter.ofPattern("HH.mm", locale)
 
     fun rupiah(amount: Long): String = numberFormat.format(amount).replace("Rp", "Rp ")
+    fun digitsOnly(value: String): Long? = value.filter(Char::isDigit).toLongOrNull()
+    fun rupiahInput(value: String): String {
+        val digits = value.filter(Char::isDigit)
+        return if (digits.isBlank()) "" else NumberFormat.getIntegerInstance(locale).format(digits.toLongOrNull() ?: 0)
+    }
     fun date(epochMillis: Long): String = Instant.ofEpochMilli(epochMillis).atZone(zone).format(compactDate)
     fun fullDate(epochMillis: Long): String = Instant.ofEpochMilli(epochMillis).atZone(zone).format(fullDate)
     fun monthYear(year: Int, month: Int): String = LocalDate.of(year, month, 1).format(DateTimeFormatter.ofPattern("MMMM yyyy", locale))

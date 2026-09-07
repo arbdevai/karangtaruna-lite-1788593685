@@ -26,7 +26,8 @@ service cloud.firestore {
 
     match /transactions/{transactionId} {
       allow read: if signedIn();
-      allow create, update: if treasurer();
+      allow create: if treasurer() && request.resource.data.type in ['INCOME', 'EXPENSE'] && request.resource.data.amount is int && request.resource.data.amount > 0;
+      allow update: if treasurer();
       allow delete: if false;
     }
 
@@ -44,7 +45,11 @@ service cloud.firestore {
 
     match /settings/{docId} {
       allow read: if signedIn();
-      allow write: if hasRole(['ADMIN']);
+      allow create: if hasRole(['ADMIN', 'TREASURER']) && (docId != 'financeSummary' || (request.resource.data.income is int && request.resource.data.expense is int && request.resource.data.expense <= request.resource.data.income));
+      allow update: if hasRole(['ADMIN', 'TREASURER']) && docId == 'financeSummary'
+        && request.resource.data.income is int && request.resource.data.expense is int
+        && request.resource.data.expense <= request.resource.data.income;
+      allow update: if hasRole(['ADMIN', 'TREASURER']) && docId != 'financeSummary';
     }
 
     match /auditLogs/{logId} {

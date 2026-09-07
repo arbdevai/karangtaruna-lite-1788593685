@@ -121,7 +121,7 @@ class ModuleViewModel(private val repository: OrganizationRepository) : ViewMode
     fun loadDues(periodId: String, refresh: Boolean = false) = load("dues:$periodId", _dues, refresh) { repository.dues(periodId, limit = 50, cursor = it) }
     fun loadPeriods(refresh: Boolean = false) = load("periods", _periods, refresh) { repository.periods(limit = 24, cursor = it) }
 
-    fun saveTransaction(tx: Transaction) = submitOp("Transaksi tersimpan.") { repository.saveTransaction(tx) }
+    fun saveTransaction(tx: Transaction, onSuccess: () -> Unit = {}) = submitOp("Transaksi tersimpan.", onSuccess) { repository.saveTransaction(tx) }
     fun saveMember(member: Member) = submitOp("Warga tersimpan.") { repository.saveMember(member) }
     fun payDues(periodId: String, memberId: String, amount: Long, paymentDate: Long, note: String?) = submitOp("Pembayaran tercatat.") { repository.recordDuesPayment(periodId, memberId, amount, paymentDate, note) }
     private val _users = MutableStateFlow(ListState<UserProfile>()); val users = _users.asStateFlow()
@@ -145,12 +145,15 @@ class ModuleViewModel(private val repository: OrganizationRepository) : ViewMode
             }
         }
     }
-    private fun submitOp(message: String, block: suspend () -> AppResult<Unit>) {
+    private fun submitOp(message: String, onSuccess: () -> Unit = {}, block: suspend () -> AppResult<Unit>) {
         if (_submit.value.loading) return
         viewModelScope.launch {
             _submit.value = SubmitState(loading = true)
             _submit.value = when (val r = block()) {
-                is AppResult.Success -> SubmitState(success = message)
+                is AppResult.Success -> {
+                    onSuccess()
+                    SubmitState(success = message)
+                }
                 is AppResult.Failure -> SubmitState(error = r.message)
             }
         }

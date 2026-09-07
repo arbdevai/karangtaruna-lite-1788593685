@@ -34,16 +34,27 @@ import id.or.karangtaruna.ui.components.*
 @Composable private fun TransactionListRow(tx: Transaction) { StatLine("${tx.description.ifBlank { tx.category }}\n${Formatters.date(tx.transactionDate)}", "${if (tx.type == TransactionType.INCOME) "+" else "-"}${Formatters.rupiah(tx.amount)}", if (tx.type == TransactionType.INCOME) Color(0xFF1B6B52) else MaterialTheme.colorScheme.error) }
 
 @Composable fun TransactionFormScreen(type: TransactionType, vm: ModuleViewModel, onSaved: () -> Unit) {
-    var amountText by remember { mutableStateOf("") }; var category by remember { mutableStateOf(if (type == TransactionType.INCOME) "Iuran" else "Kegiatan") }; var description by remember { mutableStateOf("") }; var note by remember { mutableStateOf("") }
-    val submit by vm.submit.collectAsState(); val error = Validation.amount(amountText.toLongOrNull()) ?: Validation.required(description, "Keterangan")
+    var amountText by remember { mutableStateOf("") }
+    var category by remember { mutableStateOf(if (type == TransactionType.INCOME) "Iuran" else "Kegiatan") }
+    var description by remember { mutableStateOf("") }
+    var note by remember { mutableStateOf("") }
+    val submit by vm.submit.collectAsState()
+    val amount = Formatters.digitsOnly(amountText)
+    val validationError = Validation.amount(amount) ?: Validation.required(description, "Keterangan")
     Column(Modifier.fillMaxSize().padding(20.dp)) {
-        Text(if (type == TransactionType.INCOME) "Pemasukan" else "Pengeluaran", style = MaterialTheme.typography.headlineSmall); Spacer(Modifier.height(18.dp))
-        OutlinedTextField(amountText, { amountText = it.filter(Char::isDigit) }, label = { Text("Nominal") }, prefix = { Text("Rp ") }, modifier = Modifier.fillMaxWidth())
+        Text(if (type == TransactionType.INCOME) "Pemasukan" else "Pengeluaran", style = MaterialTheme.typography.headlineSmall)
+        Spacer(Modifier.height(18.dp))
+        OutlinedTextField(amountText, { amountText = Formatters.rupiahInput(it) }, label = { Text("Nominal") }, prefix = { Text("Rp ") }, supportingText = { if (amountText.isNotBlank()) Text("Nominal: ${Formatters.rupiah(amount ?: 0)}") }, modifier = Modifier.fillMaxWidth())
         Spacer(Modifier.height(10.dp)); OutlinedTextField(category, { category = it }, label = { Text("Kategori") }, modifier = Modifier.fillMaxWidth())
         Spacer(Modifier.height(10.dp)); OutlinedTextField(description, { description = it }, label = { Text("Keterangan") }, modifier = Modifier.fillMaxWidth())
         Spacer(Modifier.height(10.dp)); OutlinedTextField(note, { note = it }, label = { Text("Catatan (opsional)") }, modifier = Modifier.fillMaxWidth())
-        if (error != null) Text(error, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(top = 8.dp))
-        Spacer(Modifier.height(20.dp)); Button(onClick = { vm.saveTransaction(Transaction(type = type, amount = amountText.toLongOrNull() ?: 0, category = category, description = description, transactionDate = System.currentTimeMillis(), note = note.ifBlank { null })); onSaved() }, enabled = error == null && !submit.loading, modifier = Modifier.fillMaxWidth()) { Text("Simpan transaksi") }
+        validationError?.let { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(top = 8.dp)) }
+        submit.error?.let { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(top = 8.dp)) }
+        Spacer(Modifier.height(20.dp))
+        Button(onClick = { vm.saveTransaction(Transaction(type = type, amount = amount ?: 0, category = category, description = description, transactionDate = System.currentTimeMillis(), note = note.ifBlank { null })) { onSaved() } }, enabled = validationError == null && !submit.loading, modifier = Modifier.fillMaxWidth()) {
+            if (submit.loading) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp) else Text("Simpan transaksi")
+        }
+        submit.success?.let { Text(it, color = Color(0xFF1B6B52), modifier = Modifier.padding(top = 8.dp)) }
     }
 }
 
@@ -56,4 +67,49 @@ import id.or.karangtaruna.ui.components.*
 
 @Composable fun DuesScreen(vm: ModuleViewModel, onAdd: () -> Unit) { val periodId = java.time.LocalDate.now().let { "%04d-%02d".format(it.year, it.monthValue) }; val state by vm.dues.collectAsState(); LaunchedEffect(periodId) { vm.loadDues(periodId, refresh = true) }; Column(Modifier.fillMaxSize().padding(horizontal = 18.dp)) { Row(Modifier.fillMaxWidth().padding(top = 17.dp), horizontalArrangement = Arrangement.SpaceBetween) { Text("Iuran", style = MaterialTheme.typography.headlineSmall); TextButton(onAdd) { Text("Catat iuran") } }; Text(Formatters.monthYear(periodId.substringBefore('-').toInt(), periodId.substringAfter('-').toInt()), color = MaterialTheme.colorScheme.onSurfaceVariant); val paid = state.items.count { it.status == DuesStatus.PAID }; Text("$paid dari ${state.items.size} sudah bayar", modifier = Modifier.padding(top = 16.dp), fontWeight = FontWeight.SemiBold); if (!state.loading && state.items.isEmpty()) EmptyState("Belum ada pembayaran bulan ini."); LazyColumn { items(state.items, key = { it.id }) { due -> StatLine(due.memberId, if (due.status == DuesStatus.PAID) "Sudah bayar · ${Formatters.rupiah(due.amount)}" else "Belum bayar", if (due.status == DuesStatus.PAID) Color(0xFF1B6B52) else MaterialTheme.colorScheme.onSurfaceVariant) } } } }
 
-@Composable fun DuesFormScreen(vm: ModuleViewModel, onSaved: () -> Unit) { var memberId by remember { mutableStateOf("") }; var amount by remember { mutableStateOf("") }; var note by remember { mutableStateOf("") }; val period = java.time.LocalDate.now().let { "%04d-%02d".format(it.year, it.monthValue) }; val error = Validation.required(memberId, "Warga") ?: Validation.amount(amount.toLongOrNull()); val submit by vm.submit.collectAsState(); Column(Modifier.fillMaxSize().padding(20.dp)) { Text("Catat iuran", style = MaterialTheme.typography.headlineSmall); Spacer(Modifier.height(18.dp)); OutlinedTextField(memberId, { memberId = it }, label = { Text("ID warga") }, modifier = Modifier.fillMaxWidth()); Spacer(Modifier.height(10.dp)); OutlinedTextField(amount, { amount = it.filter(Char::isDigit) }, label = { Text("Nominal") }, prefix = { Text("Rp ") }, modifier = Modifier.fillMaxWidth()); Spacer(Modifier.height(10.dp)); OutlinedTextField(note, { note = it }, label = { Text("Catatan (opsional)") }, modifier = Modifier.fillMaxWidth()); if (error != null) Text(error, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(top = 8.dp)); Spacer(Modifier.height(20.dp)); Button(onClick = { vm.payDues(period, memberId.trim(), amount.toLong(), System.currentTimeMillis(), note.ifBlank { null }); onSaved() }, enabled = error == null && !submit.loading, modifier = Modifier.fillMaxWidth()) { Text("Simpan pembayaran") } } }
+@Composable fun DuesFormScreen(vm: ModuleViewModel, onSaved: () -> Unit) {
+    val membersState by vm.members.collectAsState()
+    LaunchedEffect(Unit) { vm.loadMembers(refresh = true) }
+    var selectedMember by remember { mutableStateOf<Member?>(null) }
+    var amountText by remember { mutableStateOf("") }
+    var note by remember { mutableStateOf("") }
+    var memberMenuExpanded by remember { mutableStateOf(false) }
+    val period = java.time.LocalDate.now().let { "%04d-%02d".format(it.year, it.monthValue) }
+    val amount = Formatters.digitsOnly(amountText)
+    val submit by vm.submit.collectAsState()
+    val validationError = when {
+        selectedMember == null -> "Pilih warga terlebih dahulu."
+        amount == null || amount <= 0 -> "Nominal iuran harus lebih dari Rp0."
+        else -> null
+    }
+
+    Column(Modifier.fillMaxSize().padding(20.dp)) {
+        Text("Catat iuran", style = MaterialTheme.typography.headlineSmall)
+        Spacer(Modifier.height(18.dp))
+        OutlinedButton(onClick = { memberMenuExpanded = true }, modifier = Modifier.fillMaxWidth()) {
+            Text(selectedMember?.fullName ?: "Pilih Warga")
+        }
+        DropdownMenu(expanded = memberMenuExpanded, onDismissRequest = { memberMenuExpanded = false }) {
+            membersState.items.forEach { member ->
+                DropdownMenuItem(text = { Text(member.fullName) }, onClick = {
+                    selectedMember = member
+                    memberMenuExpanded = false
+                })
+            }
+        }
+        Spacer(Modifier.height(10.dp))
+        OutlinedTextField(amountText, { amountText = Formatters.rupiahInput(it) }, label = { Text("Nominal") }, prefix = { Text("Rp ") }, supportingText = { if (amountText.isNotBlank()) Text("Nominal: ${Formatters.rupiah(amount ?: 0)}") }, modifier = Modifier.fillMaxWidth())
+        Spacer(Modifier.height(10.dp))
+        OutlinedTextField(note, { note = it }, label = { Text("Catatan (opsional)") }, modifier = Modifier.fillMaxWidth())
+        validationError?.let { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(top = 8.dp)) }
+        submit.error?.let { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(top = 8.dp)) }
+        Spacer(Modifier.height(20.dp))
+        Button(onClick = {
+            val member = selectedMember ?: return@Button
+            vm.payDues(period, member.id, amount ?: 0, System.currentTimeMillis(), note.ifBlank { null })
+            onSaved()
+        }, enabled = validationError == null && !submit.loading, modifier = Modifier.fillMaxWidth()) {
+            if (submit.loading) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp) else Text("Simpan pembayaran")
+        }
+    }
+}
